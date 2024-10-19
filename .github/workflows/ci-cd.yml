@@ -52,4 +52,4 @@ jobs:
           gcloud run deploy my-flask-app \
               --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/my-flask-app \
               --platform managed \
-              --allow-unauthenticated
+              --allow-unauthenticated 2>&1
