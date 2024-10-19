@@ -1,0 +1,54 @@
+name: CI/CD for Flask App
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run unit tests
+        run: |
+          python -m unittest discover -s tests
+
+      - name: Build Docker image
+        run: |
+          docker build -t my-flask-app .
+
+      - name: Authenticate to Google Cloud
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          echo "$GCP_SA_KEY" | gcloud auth activate-service-account --key-file=-
+
+      - name: Configure gcloud
+        run: |
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+          gcloud config set run/region us-central1  # Set your preferred region
+
+      - name: Push Docker image to Google Container Registry
+        run: |
+          docker tag my-flask-app gcr.io/${{ secrets.GCP_PROJECT_ID }}/my-flask-app
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/my-flask-app
+
+      - name: Deploy to Google Cloud Run
+        run: |
+          gcloud run deploy my-flask-app \
+              --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/my-flask-app \
+              --platform managed \
+              --allow-unauthenticated
